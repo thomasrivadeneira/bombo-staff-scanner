@@ -3,55 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bombo Staff</title>
+    <title>BOMBO STAFF</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        body { background: #000; color: #fff; font-family: sans-serif; text-align: center; margin: 0; display: flex; flex-direction: column; justify-content: center; height: 100vh; }
-        #reader { width: 90%; max-width: 400px; margin: auto; border-radius: 15px; overflow: hidden; border: 2px solid #333; }
-        .result-card { margin: 20px; padding: 20px; border-radius: 15px; background: #1a1a1a; border: 3px solid #333; font-size: 1.2rem; }
-        .success { border-color: #00ff00; color: #00ff00; }
-        .error { border-color: #ff0000; color: #ff0000; }
+        body { background: #000; color: #fff; font-family: 'Segoe UI', sans-serif; text-align: center; margin: 0; display: flex; flex-direction: column; height: 100vh; }
+        #reader { width: 100%; max-width: 400px; margin: 20px auto; border-radius: 20px; overflow: hidden; }
+        .result-card { margin: 20px; padding: 30px; border-radius: 20px; background: #111; border: 4px solid #333; font-weight: bold; font-size: 1.5rem; transition: 0.3s; }
+        .success { border-color: #00ff00; color: #00ff00; background: #002200; }
+        .error { border-color: #ff0000; color: #ff0000; background: #220000; }
+        .loading { border-color: #ffff00; color: #ffff00; }
     </style>
 </head>
 <body>
-    <h2 style="margin-bottom: 10px;">BOMBO STAFF</h2>
+    <h1 style="letter-spacing: 2px; margin-top: 30px;">BOMBO <span style="color: #666;">STAFF</span></h1>
     <div id="reader"></div>
-    <div id="card" class="result-card">LISTO</div>
+    <div id="card" class="result-card">ESPERANDO QR...</div>
 
     <script>
         const html5QrCode = new Html5Qrcode("reader");
-        // USAMOS LA URL CON LA KEY INCLUIDA COMO PARÁMETRO PARA EVITAR CABECERAS
-        const API_BASE = "https://thomasrivadeneira.supabase.co/rest/v1/access_codes";
+        const API_URL = "https://thomasrivadeneira.supabase.co/rest/v1/access_codes";
         const KEY = "sb_publishable_Brzr6u-iwc7N_gku0rjNYw_jJqlEqnS";
 
-        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, async (text) => {
+        async function checkAccess(code) {
             const card = document.getElementById("card");
+            card.className = "result-card loading";
             card.innerText = "VERIFICANDO...";
-            
+
             try {
-                // Esta es la forma más simple de pedir datos, casi como abrir una web
-                const url = `${API_BASE}?code_value=eq.${text.trim()}&select=user_name&apikey=${KEY}`;
-                
-                const res = await fetch(url, {
+                // Truco final: Usamos una petición que Supabase acepta casi siempre
+                const response = await fetch(`${API_URL}?code_value=eq.${code.trim()}&select=*`, {
                     method: 'GET',
-                    mode: 'no-cors' // INTENTO DE SALTO AGRESIVO
+                    headers: {
+                        'apikey': KEY,
+                        'Authorization': `Bearer ${KEY}`,
+                        'Range': '0-9' // Esto a veces engaña al CORS
+                    }
                 });
 
-                // Si 'no-cors' falla, probamos la normal pero limpia
-                const res2 = await fetch(url);
-                const data = await res2.json();
-                
-                if (data.length > 0) {
+                const data = await response.json();
+
+                if (data && data.length > 0) {
                     card.className = "result-card success";
                     card.innerText = "ACCESO: " + data[0].user_name;
                 } else {
                     card.className = "result-card error";
-                    card.innerText = "NO ENCONTRADO";
+                    card.innerText = "CÓDIGO INVÁLIDO";
                 }
-            } catch (e) {
+            } catch (err) {
                 card.className = "result-card error";
-                card.innerText = "ERROR DE SEGURIDAD";
+                card.innerText = "ERROR DE CONEXIÓN";
+                console.error(err);
             }
+        }
+
+        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (text) => {
+            checkAccess(text);
         });
     </script>
 </body>
