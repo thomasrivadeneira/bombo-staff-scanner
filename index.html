@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bombo Scanner</title>
+    <title>Bombo Staff</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         body { background: #000; color: #fff; font-family: sans-serif; text-align: center; margin: 0; display: flex; flex-direction: column; justify-content: center; height: 100vh; }
@@ -14,9 +14,9 @@
     </style>
 </head>
 <body>
-    <h2 style="margin-bottom: 10px;">BOMBO STAFF</h2>
+    <h2>BOMBO STAFF</h2>
     <div id="reader"></div>
-    <div id="card" class="result-card">LISTO PARA ESCANEAR</div>
+    <div id="card" class="result-card">LISTO</div>
 
     <script>
         const html5QrCode = new Html5Qrcode("reader");
@@ -28,16 +28,12 @@
             card.innerText = "VERIFICANDO...";
             
             try {
-                // TRUCO: Agregamos parámetros que fuerzan a Supabase a responder sin bloquear el CORS
-                const queryUrl = `${API_URL}?code_value=eq.${encodeURIComponent(text.trim())}&select=*`;
+                // Filtro directo por URL para evitar headers complejos que disparan el CORS
+                const finalUrl = `${API_URL}?code_value=eq.${encodeURIComponent(text.trim())}&select=*&apikey=${KEY}`;
                 
-                const res = await fetch(queryUrl, {
+                const res = await fetch(finalUrl, {
                     method: 'GET',
-                    headers: { 
-                        'apikey': KEY,
-                        'Authorization': `Bearer ${KEY}`,
-                        'Content-Type': 'application/json'
-                    }
+                    headers: { 'Authorization': `Bearer ${KEY}` }
                 });
 
                 const data = await res.json();
@@ -47,11 +43,12 @@
                     card.innerText = "ACCESO: " + data[0].user_name;
                 } else {
                     card.className = "result-card error";
-                    card.innerText = "CÓDIGO NO REGISTRADO";
+                    card.innerText = "NO ENCONTRADO";
                 }
             } catch (e) {
                 card.className = "result-card error";
-                card.innerText = "ERROR DE RED (CORS)";
+                card.innerText = "FALLA DE CONEXIÓN";
+                console.error(e);
             }
         });
     </script>
