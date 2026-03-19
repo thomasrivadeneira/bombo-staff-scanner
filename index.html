@@ -1,120 +1,49 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bombo Staff</title>
+    <title>Scanner Bombo</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        body {
-            background: #000;
-            color: #fff;
-            font-family: -apple-system, sans-serif;
-            text-align: center;
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            height: 100vh;
-        }
-
-        #reader {
-            width: 90%;
-            max-width: 400px;
-            margin: 10px auto;
-            border-radius: 20px;
-            overflow: hidden;
-            border: 2px solid #333;
-        }
-
-        .result-card {
-            margin: 20px;
-            padding: 25px;
-            border-radius: 20px;
-            background: #1a1a1a;
-            border: 1px solid #333;
-        }
-
-        #status-text {
-            font-weight: bold;
-            font-size: 1.4rem;
-            display: block;
-            margin-top: 10px;
-            color: #888;
-        }
-
-        .success {
-            border-color: #00ff00;
-            background: #002200;
-        }
-
-        .error {
-            border-color: #ff0000;
-            background: #220000;
-        }
+        body { background: #000; color: #fff; font-family: sans-serif; text-align: center; margin: 0; display: flex; flex-direction: column; justify-content: center; height: 100vh; }
+        #reader { width: 90%; max-width: 400px; margin: auto; border-radius: 15px; overflow: hidden; border: 2px solid #333; }
+        .result-card { margin: 20px; padding: 20px; border-radius: 15px; background: #1a1a1a; border: 3px solid #333; font-size: 1.2rem; }
+        .success { border-color: #00ff00; color: #00ff00; }
+        .error { border-color: #ff0000; color: #ff0000; }
     </style>
 </head>
-
 <body>
-    <h2 style="margin-bottom: 5px;">BOMBO STAFF</h2>
+    <h2 style="margin-bottom: 10px;">BOMBO STAFF</h2>
     <div id="reader"></div>
-    <div id="card" class="result-card">
-        <span id="user-name" style="font-size: 1.1rem; color: #aaa;">Esperando...</span>
-        <span id="status-text">ESPERANDO QR</span>
-    </div>
+    <div id="card" class="result-card">ESPERANDO QR...</div>
 
     <script>
-        const API_URL = "https://thomasrivadeneira.supabase.co/rest/v1/access_codes";
-        const KEY = "sb_publishable_Brzr6u-iwc7N_gku0rjNYw_jJqlEqnS";
-
         const html5QrCode = new Html5Qrcode("reader");
-        let isProcessing = false;
-
-        html5QrCode.start({ facingMode: "environment" }, { fps: 20, qrbox: 250 }, async (decodedText) => {
-            if (isProcessing) return;
-            isProcessing = true;
-
-            const nameLabel = document.getElementById("user-name");
-            const statusLabel = document.getElementById("status-text");
+        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, async (text) => {
             const card = document.getElementById("card");
-
-            nameLabel.innerText = "Verificando...";
-
+            card.innerText = "VERIFICANDO...";
             try {
-                const response = await fetch(`${API_URL}?code_value=eq.${decodedText.trim()}&select=*`, {
-                    headers: { 'apikey': KEY, 'Authorization': 'Bearer ' + KEY }
-                });
-                const data = await response.json();
-
-                if (data && data.length > 0) {
-                    const guest = data[0];
-                    if (guest.status === 'active') {
-                        updateUI("ACCESO PERMITIDO", "success", guest.user_name);
-                        fetch(`${API_URL}?id=eq.${guest.id}`, {
-                            method: 'PATCH',
-                            headers: { 'apikey': KEY, 'Authorization': 'Bearer ' + KEY, 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ status: 'used' })
-                        });
-                    } else {
-                        updateUI("YA UTILIZADO", "error", guest.user_name);
+                const res = await fetch(`https://thomasrivadeneira.supabase.co/rest/v1/access_codes?code_value=eq.${text.trim()}&select=*`, {
+                    headers: { 
+                        'apikey': 'sb_publishable_Brzr6u-iwc7N_gku0rjNYw_jJqlEqnS',
+                        'Authorization': 'Bearer sb_publishable_Brzr6u-iwc7N_gku0rjNYw_jJqlEqnS',
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=representation'
                     }
+                });
+                const data = await res.json();
+                if (data.length > 0) {
+                    card.className = "result-card success";
+                    card.innerText = "ACCESO: " + data[0].user_name;
                 } else {
-                    updateUI("NO ENCONTRADO", "error", "Código desconocido");
+                    card.className = "result-card error";
+                    card.innerText = "CÓDIGO INVÁLIDO";
                 }
-            } catch (err) {
-                updateUI("ERROR DE RED", "error", "Pruebe con Datos");
+            } catch (e) {
+                card.innerText = "ERROR DE RED (CORS)";
             }
-            setTimeout(() => { isProcessing = false; }, 4000);
         });
-
-        function updateUI(msg, type, user) {
-            document.getElementById("card").className = "result-card " + type;
-            document.getElementById("user-name").innerText = user;
-            document.getElementById("status-text").innerText = msg;
-            if (navigator.vibrate) navigator.vibrate(100);
-        }
     </script>
 </body>
-
 </html>
