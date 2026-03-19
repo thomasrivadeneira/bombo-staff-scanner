@@ -6,58 +6,57 @@
     <title>BOMBO STAFF</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        body { background: #000; color: #fff; font-family: 'Segoe UI', sans-serif; text-align: center; margin: 0; display: flex; flex-direction: column; height: 100vh; }
-        #reader { width: 100%; max-width: 400px; margin: 20px auto; border-radius: 20px; overflow: hidden; }
-        .result-card { margin: 20px; padding: 30px; border-radius: 20px; background: #111; border: 4px solid #333; font-weight: bold; font-size: 1.5rem; transition: 0.3s; }
-        .success { border-color: #00ff00; color: #00ff00; background: #002200; }
-        .error { border-color: #ff0000; color: #ff0000; background: #220000; }
-        .loading { border-color: #ffff00; color: #ffff00; }
+        body { background: #000; color: #fff; font-family: sans-serif; text-align: center; margin: 0; display: flex; flex-direction: column; height: 100vh; justify-content: center; }
+        #reader { width: 90%; max-width: 400px; margin: auto; border-radius: 20px; overflow: hidden; border: 2px solid #333; }
+        .result-card { margin: 20px; padding: 25px; border-radius: 20px; background: #111; border: 4px solid #444; font-size: 1.4rem; font-weight: bold; }
+        .success { border-color: #00ff00; color: #00ff00; }
+        .error { border-color: #ff0000; color: #ff0000; }
     </style>
 </head>
 <body>
-    <h1 style="letter-spacing: 2px; margin-top: 30px;">BOMBO <span style="color: #666;">STAFF</span></h1>
+    <h2 style="margin-bottom: 15px;">BOMBO <span style="color: #888;">SCANNER</span></h2>
     <div id="reader"></div>
     <div id="card" class="result-card">ESPERANDO QR...</div>
 
     <script>
         const html5QrCode = new Html5Qrcode("reader");
-        const API_URL = "https://thomasrivadeneira.supabase.co/rest/v1/access_codes";
-        const KEY = "sb_publishable_Brzr6u-iwc7N_gku0rjNYw_jJqlEqnS";
+        const S_URL = "https://thomasrivadeneira.supabase.co/rest/v1/access_codes";
+        const S_KEY = "sb_publishable_Brzr6u-iwc7N_gku0rjNYw_jJqlEqnS";
 
-        async function checkAccess(code) {
+        async function verificar(codigo) {
             const card = document.getElementById("card");
-            card.className = "result-card loading";
-            card.innerText = "VERIFICANDO...";
+            card.innerText = "BUSCANDO...";
+            
+            // TRUCO FINAL: Usamos un proxy que "limpia" la conexión
+            const proxy = "https://corsproxy.io/?"; 
+            const finalUrl = `${proxy}${encodeURIComponent(S_URL + '?code_value=eq.' + codigo.trim() + '&select=*')}`;
 
             try {
-                // Truco final: Usamos una petición que Supabase acepta casi siempre
-                const response = await fetch(`${API_URL}?code_value=eq.${code.trim()}&select=*`, {
+                const res = await fetch(finalUrl, {
                     method: 'GET',
-                    headers: {
-                        'apikey': KEY,
-                        'Authorization': `Bearer ${KEY}`,
-                        'Range': '0-9' // Esto a veces engaña al CORS
+                    headers: { 
+                        'apikey': S_KEY,
+                        'Authorization': `Bearer ${S_KEY}`
                     }
                 });
 
-                const data = await response.json();
-
+                const data = await res.json();
+                
                 if (data && data.length > 0) {
                     card.className = "result-card success";
                     card.innerText = "ACCESO: " + data[0].user_name;
                 } else {
                     card.className = "result-card error";
-                    card.innerText = "CÓDIGO INVÁLIDO";
+                    card.innerText = "CÓDIGO NO VÁLIDO";
                 }
-            } catch (err) {
+            } catch (e) {
                 card.className = "result-card error";
-                card.innerText = "ERROR DE CONEXIÓN";
-                console.error(err);
+                card.innerText = "REINTENTE (DATOS MÓVILES)";
             }
         }
 
         html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (text) => {
-            checkAccess(text);
+            verificar(text);
         });
     </script>
 </body>
