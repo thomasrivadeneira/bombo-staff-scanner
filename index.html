@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bombo Staff</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        body {
+            background: #000;
+            color: #fff;
+            font-family: -apple-system, sans-serif;
+            text-align: center;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        #reader {
+            width: 90%;
+            max-width: 400px;
+            margin: 10px auto;
+            border-radius: 20px;
+            overflow: hidden;
+            border: 2px solid #333;
+        }
+
+        .result-card {
+            margin: 20px;
+            padding: 25px;
+            border-radius: 20px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+        }
+
+        #status-text {
+            font-weight: bold;
+            font-size: 1.4rem;
+            display: block;
+            margin-top: 10px;
+            color: #888;
+        }
+
+        .success {
+            border-color: #00ff00;
+            background: #002200;
+        }
+
+        .error {
+            border-color: #ff0000;
+            background: #220000;
+        }
+    </style>
+</head>
+
+<body>
+    <h2 style="margin-bottom: 5px;">BOMBO STAFF</h2>
+    <div id="reader"></div>
+    <div id="card" class="result-card">
+        <span id="user-name" style="font-size: 1.1rem; color: #aaa;">Esperando...</span>
+        <span id="status-text">ESPERANDO QR</span>
+    </div>
+
+    <script>
+        const API_URL = "https://thomasrivadeneira.supabase.co/rest/v1/access_codes";
+        const KEY = "sb_publishable_Brzr6u-iwc7N_gku0rjNYw_jJqlEqnS";
+
+        const html5QrCode = new Html5Qrcode("reader");
+        let isProcessing = false;
+
+        html5QrCode.start({ facingMode: "environment" }, { fps: 20, qrbox: 250 }, async (decodedText) => {
+            if (isProcessing) return;
+            isProcessing = true;
+
+            const nameLabel = document.getElementById("user-name");
+            const statusLabel = document.getElementById("status-text");
+            const card = document.getElementById("card");
+
+            nameLabel.innerText = "Verificando...";
+
+            try {
+                const response = await fetch(`${API_URL}?code_value=eq.${decodedText.trim()}&select=*`, {
+                    headers: { 'apikey': KEY, 'Authorization': 'Bearer ' + KEY }
+                });
+                const data = await response.json();
+
+                if (data && data.length > 0) {
+                    const guest = data[0];
+                    if (guest.status === 'active') {
+                        updateUI("ACCESO PERMITIDO", "success", guest.user_name);
+                        fetch(`${API_URL}?id=eq.${guest.id}`, {
+                            method: 'PATCH',
+                            headers: { 'apikey': KEY, 'Authorization': 'Bearer ' + KEY, 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ status: 'used' })
+                        });
+                    } else {
+                        updateUI("YA UTILIZADO", "error", guest.user_name);
+                    }
+                } else {
+                    updateUI("NO ENCONTRADO", "error", "Código desconocido");
+                }
+            } catch (err) {
+                updateUI("ERROR DE RED", "error", "Pruebe con Datos");
+            }
+            setTimeout(() => { isProcessing = false; }, 4000);
+        });
+
+        function updateUI(msg, type, user) {
+            document.getElementById("card").className = "result-card " + type;
+            document.getElementById("user-name").innerText = user;
+            document.getElementById("status-text").innerText = msg;
+            if (navigator.vibrate) navigator.vibrate(100);
+        }
+    </script>
+</body>
+
+</html>
