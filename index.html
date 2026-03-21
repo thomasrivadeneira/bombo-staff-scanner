@@ -54,9 +54,19 @@
             }
         }
 
-        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (text) => {
-            verificar(text);
-        });
+       // Busca esta parte en tu código y reemplázala
+html5QrCode.start(
+    { facingMode: { exact: "environment" } }, // FUERZA LA CÁMARA TRASERA
+    {
+        fps: 10,
+        qrbox: { width: 250, height: 250 }
+    },
+    (text) => { verificar(text); }
+).catch((err) => {
+    // Si falla la cámara trasera, intenta con cualquier cámara disponible
+    html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (text) => { verificar(text); });
+    console.error("Error de cámara:", err);
+});
     </script>
 </body>
 </html>
