@@ -50,14 +50,28 @@
         }
 
         // Iniciar cámara con reintento automático
-        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-        
-        html5QrCode.start({ facingMode: "environment" }, config, (text) => {
-            verificar(text);
-        }).catch(err => {
-            console.error(err);
-            document.getElementById("card").innerText = "ERROR: ACEPTA PERMISOS DE CÁMARA";
+     // Reemplaza desde donde dice "const config..." hasta el final
+const config = { 
+    fps: 10, 
+    qrbox: { width: 250, height: 250 },
+    aspectRatio: 1.0 // Esto ayuda a que los celulares no se confundan
+};
+
+function iniciarCamara() {
+    html5QrCode.start(
+        { facingMode: "environment" }, 
+        config, 
+        (text) => { verificar(text); }
+    ).catch(err => {
+        // Si falla la trasera, intenta con cualquier cámara disponible
+        html5QrCode.start({ facingMode: "user" }, config, (text) => { verificar(text); })
+        .catch(e => {
+            document.getElementById("card").innerText = "ACTIVA LA CÁMARA EN AJUSTES";
         });
+    });
+}
+
+iniciarCamara();
     </script>
 </body>
 </html>
